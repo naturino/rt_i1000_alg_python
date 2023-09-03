@@ -191,50 +191,6 @@ class DeepCell():
                 dst = json.dumps(dst, indent=4)
 
             return dst
-    # def run(self, info):
-    #     with self.run_lock:
-    #         info_list = info.split('*')
-    #         dst = self.empty
-    #         if self.only_analyse_json:
-    #             if len(info_list) == 2:
-    #                 img_path, task = info_list
-    #                 if task == '2':
-    #                     dst = self.json_analyse.run(img_path)
-    #
-    #         else:
-    #             if len(info_list) == 2:
-    #                 img_path, task = info_list
-    #
-    #                 if not os.path.isfile(img_path):
-    #                     self.logger.info(f'{img_path} is not file')
-    #                     return dst
-    #                 if not self.file_operate.is_type(img_path, self.file_type):
-    #                     self.logger.info(f'{img_path} is not in {self.file_type}')
-    #                     return dst
-    #
-    #                 if task == '0':
-    #                     dst = self.model_flip100x.run(img_path)
-    #                 if task == '1':
-    #                     dst = self.model_cls100x.run(img_path)
-    #                 elif task == '2':
-    #                     dst = self.model_analyse.run(img_path)
-    #
-    #             elif len(info_list) == 1:
-    #
-    #                 img_path = info_list[0]
-    #                 if not os.path.isfile(img_path):
-    #                     self.logger.info(f'{img_path} is not file')
-    #                     return dst
-    #                 if not self.file_operate.is_type(img_path, self.file_type):
-    #                     self.logger.info(f'{img_path} is not in {self.file_type}')
-    #                     return dst
-    #                 dst = self.model_det10x.run(img_path)
-    #
-    #         if type(dst) != str:
-    #             dst = json.dumps(dst, indent=4)
-    #
-    #         return dst
-
 
 if __name__ == "__main__":
     config_path = 'alg/assets/config.py'

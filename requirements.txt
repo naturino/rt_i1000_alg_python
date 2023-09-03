@@ -1,0 +1,6 @@
+mmdet==3.0.0
+mmengine==0.8.4
+mmpretrain==1.0.1
+numpy==1.24.4
+opencv_python==4.8.0.74
+torch==1.10.1+cu111
