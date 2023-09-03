@@ -10,7 +10,6 @@ from model import FileOperate
 
 class DeepCell():
     def __init__(self, config_path):
-
         # 读取配置文件
         config = self.__read_config(config_path)
 
@@ -36,11 +35,8 @@ class DeepCell():
         self.empty = config['EMPTY']
         self.file_type = config['IMAGE_TYPE']
 
-        # self.task = ['10XDet', '100XCls', '100XFlip', '100XAnalyse', '100XJson']
-
         # 创建一个锁对象
         self.run_lock = threading.Lock()
-
 
         # 启动模型
         self.start_model(config)
@@ -71,17 +67,11 @@ class DeepCell():
         self.logger.info(f"Model Test Successful")
 
     def model_debug(self):
-        # self.run("F:/adam/i1000/test/20220805_WCQ_225966-1_2/1.jpg*2")
-        # self.run("F:/adam/i1000/test/report/2.jpg*2")
-        # self.run("F:/adam/i1000/test/report/3.jpg*2")
         floder = 'F:/adam/i1000/adk/adk_unet'
-        # floder = 'F:/adam/i1000/seg_100x/src/images'
         for root, _, file_list in os.walk(floder):
             for file in file_list:
                 path = os.path.join(root, file) + '*2'
-                # self.run(f'D:/Users/Desktop/areaEnhance.bmp*2')
                 self.run(path)
-                # exit(0)
 
     def start_model(self,config):
 
