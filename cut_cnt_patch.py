@@ -112,9 +112,6 @@ class  CutCntPatch:
 
         # 查找轮廓
         contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        # cv2.drawContours(img,contours,-1,0,2)
-        # cv2.imshow('img',img)
-        # cv2.waitKey(0)
 
         return contours
 

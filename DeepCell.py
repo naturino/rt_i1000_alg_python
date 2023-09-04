@@ -1,7 +1,7 @@
 from i1000_alg import *
 import loger
 import os
-import rt_socket
+import socket_server
 import torch
 import threading
 from mmengine.fileio import dump
@@ -112,11 +112,11 @@ class DeepCell():
         self.port2 = config['PORT2']
 
         # 启动socket1
-        self.server1 = rt_socket.SocketServer(self.host, self.port1, self.logger)
+        self.server1 = socket_server.SocketServer(self.host, self.port1, self.logger)
         self.logger.info(f"SocketServer Init {self.host}:{self.port1} Successful")
 
         # 启动socket2
-        self.server2 = rt_socket.SocketServer(self.host, self.port2, self.logger)
+        self.server2 = socket_server.SocketServer(self.host, self.port2, self.logger)
         self.logger.info(f"SocketServer Init {self.host}:{self.port2} Successful")
 
         # 创建两个线程来分别启动这两个服务
