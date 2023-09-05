@@ -6,6 +6,7 @@ import loger
 import socket_server
 from i1000_alg import *
 
+
 class DeepCell():
     def __init__(self, config_path):
         # 读取配置文件
@@ -84,12 +85,19 @@ class DeepCell():
 
         if gpu_is_available or is_cpu:
             # 初始化算法模型
+
             self.task_model['100XFlip'] = I1000FlipModel(config, self.logger)
             self.task_model['100XCls'] = I1000ClsModel(config, self.logger, self.task_model['100XFlip'])
+
+
             self.task_model['10XDet'] = I1000DetModel(config, self.logger)
             self.task_model['100XInstSeg'] = I1000InstSegModel(config, self.logger)
-            self.task_model['100XAnalyse'] = I1000AnalyseModel(config, self.logger, self.task_model['100XInstSeg'],
-                                                               self.task_model['100XCls'], self.task_model['100XFlip'])
+
+            if config['MASKSEG']:
+                self.task_model['100XMask'] = I1000MaskModel(config, self.logger)
+
+            self.task_model['100XAnalyse'] = I1000AnalyseModel(config, self.logger, self.task_model)
+
             self.logger.info(f"Model Load Successful")
 
         else:
@@ -160,7 +168,7 @@ class DeepCell():
         self.logger.info(f"Model Test Successful")
 
     def _model_debug(self):
-        floder = 'F:/adam/i1000/adk/adk_unet'
+        floder = 'F:/adam/i1000/adk/adk_src'
         for root, _, file_list in os.walk(floder):
             for file in file_list:
                 path = os.path.join(root, file) + '*2'
@@ -184,6 +192,9 @@ class DeepCell():
                     dst = '100XJson'
                 else:
                     dst = '100XAnalyse'
+
+            # elif task == '3':
+            #     dst = '100XMask'
 
         elif len(info_list) == 1:
             dst = '100XAnalyse'

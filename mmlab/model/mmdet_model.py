@@ -1,55 +1,142 @@
-import random
+import os
 import cv2
-import numpy as np
 import json
+import copy
+import torch
+import random
 import warnings
-from mmdet.apis import init_detector, inference_detector
-from mmpretrain.apis import ImageClassificationInferencer
-from file_operate import *
+import numpy as np
+from pathlib import Path
 
-# 忽略特定警告类别
-warnings.filterwarnings("ignore", category=UserWarning, message="__floordiv__ is deprecated")
-warnings.filterwarnings("ignore", category=UserWarning, message="torch.meshgrid")
+from mmengine.config import Config
+from mmengine.model.utils import revert_sync_batchnorm
+from mmengine.registry import init_default_scope
+from mmengine.runner import load_checkpoint
 
-class MMClsModel:
+from mmdet.registry import DATASETS, MODELS
+from mmdet.evaluation import get_classes
+from mmdet.utils import get_test_pipeline_cfg
 
-    def __init__(self,config_file,checkpoint_file,device):
-        self.model = ImageClassificationInferencer(config_file, pretrained=checkpoint_file, device=device)
-
-    def infer(self,img_file):
-        results = self.model(img_file)
-        print()
-        return results
-
-    def preprocess(self,img):
-        return img
-    def postprocess(self,results):
-        dst = []
-        for result in results:
-            del result['pred_scores']
-            dst.append(result)
-        return dst
-
-    def save_json(self,results,save_path):
-
-        directory_path = os.path.dirname(save_path)
-        if not os.path.exists(directory_path):
-            os.makedirs(directory_path)
-
-        if save_path  != None:
-            with open(save_path, 'w') as json_file:
-                json.dump(results, json_file, indent=4)
+from mmcv.transforms import Compose
+from mmcv.ops import RoIPool
 
 class MMDetModel:
 
     def __init__(self,config_file,checkpoint_file,device):
 
-        self.model = init_detector(config_file, checkpoint_file, device=device)  # or device='cuda:0'
+        self.model = self.init_model(config_file, checkpoint_file, device=device)  # or device='cuda:0'
+        self.test_pipeline = self.init_test_pipeline()
         self.colors = {}
 
-    def infer(self,img_file):
-        self.result = inference_detector(self.model, img_file)
-        return self.result
+    def init_test_pipeline(self):
+        cfg = self.model.cfg
+        test_pipeline = get_test_pipeline_cfg(cfg)
+        test_pipeline = Compose(test_pipeline)
+        return test_pipeline
+
+    def init_model(self,config,checkpoint,palette = 'none',device = 'cuda:0',cfg_options = None):
+        if isinstance(config, (str, Path)):
+            config = Config.fromfile(config)
+        elif not isinstance(config, Config):
+            raise TypeError('config must be a filename or Config object, '
+                            f'but got {type(config)}')
+        if cfg_options is not None:
+            config.merge_from_dict(cfg_options)
+        elif 'init_cfg' in config.model.backbone:
+            config.model.backbone.init_cfg = None
+        init_default_scope(config.get('default_scope', 'mmdet'))
+
+        model = MODELS.build(config.model)
+        model = revert_sync_batchnorm(model)
+        if checkpoint is None:
+            warnings.simplefilter('once')
+            warnings.warn('checkpoint is None, use COCO classes by default.')
+            model.dataset_meta = {'classes': get_classes('coco')}
+        else:
+            checkpoint = load_checkpoint(model, checkpoint, map_location='cpu')
+            # Weights converted from elsewhere may not have meta fields.
+            checkpoint_meta = checkpoint.get('meta', {})
+
+            # save the dataset_meta in the model for convenience
+            if 'dataset_meta' in checkpoint_meta:
+                # mmdet 3.x, all keys should be lowercase
+                model.dataset_meta = {
+                    k.lower(): v
+                    for k, v in checkpoint_meta['dataset_meta'].items()
+                }
+            elif 'CLASSES' in checkpoint_meta:
+                # < mmdet 3.x
+                classes = checkpoint_meta['CLASSES']
+                model.dataset_meta = {'classes': classes}
+            else:
+                warnings.simplefilter('once')
+                warnings.warn(
+                    'dataset_meta or class names are not saved in the '
+                    'checkpoint\'s meta data, use COCO classes by default.')
+                model.dataset_meta = {'classes': get_classes('coco')}
+
+        # Priority:  args.palette -> config -> checkpoint
+        if palette != 'none':
+            model.dataset_meta['palette'] = palette
+        else:
+            test_dataset_cfg = copy.deepcopy(config.test_dataloader.dataset)
+            # lazy init. We only need the metainfo.
+            test_dataset_cfg['lazy_init'] = True
+            metainfo = DATASETS.build(test_dataset_cfg).metainfo
+            cfg_palette = metainfo.get('palette', None)
+            if cfg_palette is not None:
+                model.dataset_meta['palette'] = cfg_palette
+            else:
+                if 'palette' not in model.dataset_meta:
+                    warnings.warn(
+                        'palette does not exist, random is used by default. '
+                        'You can also set the palette to customize.')
+                    model.dataset_meta['palette'] = 'random'
+
+        model.cfg = config  # save the config in the model for convenience
+        model.to(device)
+        model.eval()
+        return model
+
+    def infer(self,imgs):
+
+        if isinstance(imgs, (list, tuple)):
+            is_batch = True
+        else:
+            imgs = [imgs]
+            is_batch = False
+
+        if self.model.data_preprocessor.device.type == 'cpu':
+            for m in self.model.modules():
+                assert not isinstance(
+                    m, RoIPool
+                ), 'CPU inference with RoIPool is not supported currently.'
+
+        result_list = []
+        for img in imgs:
+            # prepare data
+            if isinstance(img, np.ndarray):
+                # TODO: remove img_id.
+                data_ = dict(img=img, img_id=0)
+            else:
+                # TODO: remove img_id.
+                data_ = dict(img_path=img, img_id=0)
+            # build the data pipeline
+            data_ = self.test_pipeline(data_)
+
+            data_['inputs'] = [data_['inputs']]
+            data_['data_samples'] = [data_['data_samples']]
+
+            # forward the model
+            with torch.no_grad():
+                results = self.model.test_step(data_)[0]
+
+            result_list.append(results)
+
+        if not is_batch:
+            return result_list[0]
+        else:
+            return result_list
 
     def visual(self,image_path, results, save_floder = './vis/det',thikness  = 2):
         # 加载图像
@@ -176,12 +263,6 @@ class MMDetModel:
                 break
             iou_values = [self.iou(current_obj, obj ,iou_threshold) for obj in dst_sorted]
 
-            indices_to_remove = []
-            # for index, iou in enumerate(iou_values):
-            #     if iou > iou_threshold:
-            #         indices_to_remove.append(index)
-            # for index in reversed(indices_to_remove):
-            #     dst_sorted.pop(index)
             for index, iou in reversed(list(enumerate(iou_values))):
                 if iou > iou_threshold:
                     dst_sorted.pop(index)

@@ -1,7 +1,21 @@
+import os
 import time
-from model import *
-from base_cv_alg import  *
+import cv2
+import json
+import warnings
+import numpy as np
+
+from base_cv_alg import BasicCVAlg
 from cut_cnt_patch import CutCntPatch
+from file_operate import FileOperate
+
+from mmlab.model.mmseg_model import MMSegModel
+from mmlab.model.mmdet_model import MMDetModel
+from mmlab.model.mmdet_model import MMInstSegModel
+from mmlab.model.mmpre_model import MMClsModel
+
+# 忽略特定警告类别
+warnings.filterwarnings("ignore", category=UserWarning)
 
 class I1000InstSegModel(MMInstSegModel):
     def __init__(self, config, logger):
@@ -86,13 +100,16 @@ class I1000InstSegModel(MMInstSegModel):
             results.append(dst_dict)
         return results
 
-    def run(self, img_path):
+    def run(self, img_path, image = np.array([])):
         img_path = img_path.replace('\\', '/')
         self.logger.info(f'Seg Infer {img_path}')
 
         start_time = time.time()
 
         # 分割染色体
+        # if image.size != 0:
+        #     infer_result = self.model.infer(image)
+        # else:
         infer_result = self.model.infer(img_path)
 
         infer_result = self.model.postprocess(infer_result, self.conf_score, self.min_area)
@@ -699,15 +716,61 @@ class I1000DetModel(MMDetModel):
             })
         return dst
 
+class I1000MaskModel(MMSegModel):
+    def __init__(self, config, logger):
+
+        self.logger = logger
+        temp_path = config['TEMP_PATH']
+        self.save_img_floder = os.path.join(temp_path, 'vis', 'mask').replace('\\', '/')
+
+        # 初始化变量
+        self.empty = config['EMPTY']
+        self.file_type = config['IMAGE_TYPE']
+        self.save_vis = config['MASK100X_SAVE_VIS']
+
+        # 初始化模型
+        self.model = MMSegModel(config['MASK100X_MODEL_CONFIG'], config['MASK100X_CHECKPOINT'],
+                                config['DEVICE'])
+
+        self.basicCVAlg = BasicCVAlg()
+        self.fileOperate = FileOperate()
+
+    def run(self, img_path):
+        img_path = img_path.replace('\\', '/')
+        self.logger.info(f'Mask Infer {img_path}')
+
+        start_time = time.time()
+
+        # 分割染色体
+        infer_result = self.model.infer(img_path)
+        masks = self.model.get_masks(infer_result)
+
+        if self.save_vis:
+            # self.model.save_masks(infer_result,self.save_img_floder)
+            self.model.visual(infer_result, self.save_img_floder)
+
+        end_time = time.time()
+        infer_time = round(end_time - start_time, 3)
+        self.logger.info(f'Mask successufl, cost {infer_time}s')
+
+        return masks
+
 class I1000AnalyseModel():
-    def __init__(self, config, logger,model_seg100x,model_cls100x,model_flip100x):
+    def __init__(self, config, logger,models_dict):
         self.logger = logger
         self.empty = config['EMPTY']
         self.cls_model = config['CLS_MODEL']
+
         # 初始化模型
-        self.model_cls100x = model_cls100x
-        self.model_flip100x = model_flip100x
-        self.model_seg100x = model_seg100x
+        self.model_cls100x = models_dict['100XCls']# model_cls100x
+        self.model_flip100x = models_dict['100XFlip']
+        self.mask_seg = config['MASKSEG']
+        self.model_seg100x = models_dict['100XInstSeg']
+
+
+        if self.mask_seg:
+            self.model_mask100x = models_dict['100XMask']
+
         self.fileOperate = FileOperate()
 
     def __cls_flip_single_chroms(self, img_path, results):
@@ -771,6 +834,16 @@ class I1000AnalyseModel():
 
         return results,save_patch_path
 
+    def preprocess(self,img_path):
+
+        image = cv2.imread(img_path, 1)
+        if self.mask_seg:
+            masks = self.model_mask100x.run(img_path)
+            mask = masks['chromosome']
+            image[mask == 0, :] =  255
+
+        return image
+
     def run(self, img_path):
         img_path = img_path.replace('\\', '/')
         dst = self.empty
@@ -784,7 +857,8 @@ class I1000AnalyseModel():
         start_time = time.time()
 
         # 分割染色体核型
-        seg_result = self.model_seg100x.run(img_path)
+        image = self.preprocess(img_path)
+        seg_result = self.model_seg100x.run(img_path, image)
 
         if len(seg_result) == 0:
             return dst
