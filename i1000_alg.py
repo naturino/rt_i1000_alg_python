@@ -35,6 +35,8 @@ class I1000InstSegModel(MMInstSegModel):
         self.iou_score = config['SEG100X_IOU_THRESH']
 
         # 初始化模型
+        config['SEG100X_MODEL_CONFIG'] = os.path.join(config['ROOT_PATH'],config['SEG100X_MODEL_CONFIG'])
+        config['SEG100X_CHECKPOINT'] = os.path.join(config['ROOT_PATH'], config['SEG100X_CHECKPOINT'])
         self.model = MMInstSegModel(config['SEG100X_MODEL_CONFIG'], config['SEG100X_CHECKPOINT'],
                                            config['DEVICE'])
 
@@ -169,6 +171,8 @@ class I1000ClsModel(MMClsModel):
         self.img_max_size = config['CLS100X_MAXSIZE']
 
         # 初始化模型
+        config['CLS100X_MODEL_CONFIG'] = os.path.join(config['ROOT_PATH'],config['CLS100X_MODEL_CONFIG'])
+        config['CLS100X_CHECKPOINT'] = os.path.join(config['ROOT_PATH'], config['CLS100X_CHECKPOINT'])
         self.model = MMClsModel(config['CLS100X_MODEL_CONFIG'], config['CLS100X_CHECKPOINT'],
                                         config['DEVICE'])
         self.model_flip100x = flip_model
@@ -561,6 +565,8 @@ class I1000FlipModel(MMInstSegModel):
         self.img_max_size = config['FLIP100X_MAXSIZE']
 
         # 初始化模型
+        config['FLIP100X_MODEL_CONFIG'] = os.path.join(config['ROOT_PATH'],config['FLIP100X_MODEL_CONFIG'])
+        config['FLIP100X_CHECKPOINT'] = os.path.join(config['ROOT_PATH'], config['FLIP100X_CHECKPOINT'])
         self.model = MMClsModel(config['FLIP100X_MODEL_CONFIG'], config['FLIP100X_CHECKPOINT'],
                                 config['DEVICE'])
 
@@ -633,6 +639,8 @@ class I1000DetModel(MMDetModel):
         self.iou_score = config['DET10X_IOU_THRESH']
 
         # 初始化模型
+        config['DET10X_MODEL_CONFIG'] = os.path.join(config['ROOT_PATH'],config['DET10X_MODEL_CONFIG'])
+        config['DET10X_CHECKPOINT'] = os.path.join(config['ROOT_PATH'], config['DET10X_CHECKPOINT'])
         self.model = MMDetModel(config['DET10X_MODEL_CONFIG'], config['DET10X_CHECKPOINT'],
                                     config['DEVICE'])
 
@@ -729,6 +737,8 @@ class I1000MaskModel(MMSegModel):
         self.save_vis = config['MASK100X_SAVE_VIS']
 
         # 初始化模型
+        config['MASK100X_MODEL_CONFIG'] = os.path.join(config['ROOT_PATH'],config['MASK100X_MODEL_CONFIG'])
+        config['MASK100X_CHECKPOINT'] = os.path.join(config['ROOT_PATH'], config['MASK100X_CHECKPOINT'])
         self.model = MMSegModel(config['MASK100X_MODEL_CONFIG'], config['MASK100X_CHECKPOINT'],
                                 config['DEVICE'])
 

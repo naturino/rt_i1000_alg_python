@@ -2,10 +2,9 @@ VERSION = "01.01.15-Beta1"
 HOST = "127.0.0.1"
 PORT1 = 8886
 PORT2 = 8887
-CLS_MODEL = True
-
 TEMP_PATH = ''
 
+CLS_MODEL = False
 if CLS_MODEL:
     SEG100X_MODEL_CONFIG = 'alg/model/config/I1000SEG_queryinst_r50.py'
     SEG100X_CHECKPOINT = 'alg/model/checkpoint/I1000SEG_queryinst_r50.pth'
