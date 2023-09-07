@@ -4,8 +4,7 @@ import torch
 import threading
 from mmengine.fileio import dump
 
-import loger
-import socket_server
+from utils import loger, socket_server
 from i1000_alg import *
 
 
@@ -26,7 +25,7 @@ class DeepCell():
         self.file_operate.del_dir(temp_path)
 
         # 初始化日志
-        self.logger = loger.Logger(os.path.join(self.config['ROOT_PATH'],'alg','log'))
+        self.logger = loger.Logger(os.path.join(self.config['ROOT_PATH'], 'alg', 'log'))
         self.logger.info(f"Config Info: {config_json}")
         self.logger.info(f"DeepCell Start")
 

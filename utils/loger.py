@@ -1,6 +1,7 @@
-import logging
 import os
+import logging
 import datetime
+
 class Logger:
 
     def __init__(self,log_floder):

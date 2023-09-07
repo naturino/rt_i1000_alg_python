@@ -1,6 +1,6 @@
 import cv2
-import numpy as np
 import json
+import numpy as np
 
 class  CutCntPatch:
     def __init__(self):

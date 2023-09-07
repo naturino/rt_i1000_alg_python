@@ -1,8 +1,9 @@
-import cv2
 import os
+import cv2
 import shutil
-import cut_cnt_patch
-import file_operate
+from utils import file_operate
+from utils.cv_alg import cut_cnt_patch
+
 
 class SegByReport:
     def __init__(self):

@@ -5,14 +5,14 @@ import json
 import warnings
 import numpy as np
 
-from base_cv_alg import BasicCVAlg
-from cut_cnt_patch import CutCntPatch
-from file_operate import FileOperate
+from utils.cv_alg.base_cv_alg import BasicCVAlg
+from utils.cv_alg.cut_cnt_patch import CutCntPatch
+from utils.file_operate import FileOperate
 
+from mmlab.model.mmpre_model import MMClsModel
 from mmlab.model.mmseg_model import MMSegModel
 from mmlab.model.mmdet_model import MMDetModel
 from mmlab.model.mmdet_model import MMInstSegModel
-from mmlab.model.mmpre_model import MMClsModel
 
 # 忽略特定警告类别
 warnings.filterwarnings("ignore", category=UserWarning)

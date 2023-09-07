@@ -9,16 +9,16 @@ import numpy as np
 from pathlib import Path
 
 from mmengine.config import Config
-from mmengine.model.utils import revert_sync_batchnorm
-from mmengine.registry import init_default_scope
 from mmengine.runner import load_checkpoint
+from mmengine.registry import init_default_scope
+from mmengine.model.utils import revert_sync_batchnorm
 
-from mmdet.registry import DATASETS, MODELS
 from mmdet.evaluation import get_classes
+from mmdet.registry import DATASETS, MODELS
 from mmdet.utils import get_test_pipeline_cfg
 
-from mmcv.transforms import Compose
 from mmcv.ops import RoIPool
+from mmcv.transforms import Compose
 
 class MMDetModel:
 
