@@ -777,6 +777,9 @@ class I1000AnalyseModel():
         self.mask_seg = config['MASKSEG']
         self.model_seg100x = models_dict['100XInstSeg']
 
+        temp_path = config['TEMP_PATH']
+        self.counter = 0
+        self.save_result_floder = os.path.join(temp_path, 'result').replace('\\', '/')
 
         if self.mask_seg:
             self.model_mask100x = models_dict['100XMask']
@@ -841,18 +844,20 @@ class I1000AnalyseModel():
                 save_path = os.path.join(save_patch_path, f'{cls}_{score}_{idx}.png')
                 flip_patch = self.model_flip100x.flip(flip_result, crop_patch)
                 cv2.imwrite(save_path, flip_patch)
+            result['crop_patch'] = flip_patch
 
         return results,save_patch_path
 
     def preprocess(self,img_path):
 
         image = cv2.imread(img_path, 1)
+        mask = np.array([])
         if self.mask_seg:
             masks = self.model_mask100x.run(img_path)
             mask = masks['chromosome']
             image[mask == 0, :] =  255
 
-        return image
+        return image,mask
 
     def run(self, img_path):
         img_path = img_path.replace('\\', '/')
@@ -867,7 +872,7 @@ class I1000AnalyseModel():
         start_time = time.time()
 
         # 分割染色体核型
-        image = self.preprocess(img_path)
+        image,mask = self.preprocess(img_path)
         seg_result = self.model_seg100x.run(img_path, image)
 
         if len(seg_result) == 0:
@@ -876,14 +881,14 @@ class I1000AnalyseModel():
         # 分类和旋转单条染色体
         infer_result,save_single_path = self.__cls_flip_single_chroms(img_path, seg_result)
 
-        infer_result = self.model_seg100x.del_key(infer_result, 'crop_patch')
+        # infer_result = self.model_seg100x.del_key(infer_result, 'crop_patch')
 
+        infer_result = self.result_transform(infer_result, img_path, mask)
+        save_result = self.remove_result_img(infer_result)
         self.fileOperate.mkdirs(self.model_seg100x.save_json_floder)
         save_json_path = os.path.join(self.model_seg100x.save_json_floder, f'{name}.json').replace('\\', '/')
+        self.model_seg100x.save_json(save_result, save_json_path)
         self.logger.info(f'Save Json  {save_json_path}')
-
-        infer_result = self.result_transform(infer_result, img_path,save_single_path)
-        self.model_seg100x.save_json(infer_result, save_json_path)
 
         end_time = time.time()
         infer_time = round(end_time - start_time, 3)
@@ -891,14 +896,41 @@ class I1000AnalyseModel():
         dst = save_json_path.replace('\\', '/')
         return infer_result
 
-    def result_transform(self,results,img_path,save_single_path):
+    def remove_result_img(self,results):
+        dst = []
+        for result in results:
+            tmp = {}
+            for k,v in result.items():
+                if isinstance(v, np.ndarray):
+                    continue
+                tmp[k] = v
+            if len(tmp.keys()) > 0:
+                dst.append(tmp)
+        return dst
+
+    def save_single_mask(self,save_floder,results,mask):
+
+        array_floder = os.path.join(save_floder,'array')
+
+        if not os.path.exists(array_floder):
+            os.makedirs(array_floder)
+
+        for idx,result in enumerate(results):
+            name =  f'{idx+1}.png'
+            patch = result["crop_patch"]
+            cv2.imwrite(os.path.join(array_floder,name),patch)
+
+        cv2.imwrite(os.path.join(save_floder, 'mask.png'),mask)
+        return
+
+    def result_transform(self,results,img_path,mask):
         """
         [
             {
                 "image_path" : "F:/adam/i1000/test/100x\\1.png"
             },
             {
-                "single_path" : "F:/adam/i1000/test/100x"
+                "result_path" : "F:/adam/i1000/test/100x"
             },
             {
                 "class" : 3,
@@ -924,10 +956,13 @@ class I1000AnalyseModel():
         classes = ['None', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10',
                    '11', '12', '13', '14', '15', '16', '17', '18', '19', '20',
                    '21', '22', 'X', 'Y']
-
         image_path = {"image_path":img_path}
-        seg_floder= {"seg_floder":save_single_path}
-        dst = [image_path,seg_floder]
+        self.counter += 1
+        save_floder = os.path.join(self.save_result_floder,str(self.counter))
+        self.save_single_mask( save_floder , results, mask)
+        result_path= {"result_path":save_floder}
+
+        dst = [image_path,result_path]
         for idx,result in enumerate(results):
             dst.append({
                 "class": classes.index(result["cls_class"]),
@@ -936,7 +971,6 @@ class I1000AnalyseModel():
                 "seg_score": result["score"],
                 "number": idx+1,
                 "points":result["cnts"][0]
-
             })
         score_cls,score_value = self.model_seg100x.chrom_score(result)
         dst.append({"score" : score_cls,"scorevalue" : score_value})

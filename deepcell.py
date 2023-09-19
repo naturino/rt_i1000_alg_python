@@ -1,11 +1,9 @@
-import os.path
-
 import torch
 import threading
 from mmengine.fileio import dump
 
-from utils import loger, socket_server
-from i1000_alg import *
+from utils import loger, socket_server, codec
+from utils.i1000_alg import *
 
 
 class DeepCell():
@@ -61,7 +59,7 @@ class DeepCell():
             dst = self.task_model[task].run(img_path)
 
             if type(dst) != str:
-                dst = json.dumps(dst, indent=4)
+                dst = json.dumps(dst, indent=4, cls=codec.DataEncoder)
 
             return dst
 
@@ -80,6 +78,7 @@ class DeepCell():
         self.logger.info(f"Find GPU: {gpu_info}")
         if gpu_info == 'NVIDIA GeForce RTX 3060':
             gpu_is_available = True
+
         is_cpu = config['DEVICE'] == 'cpu'
 
         self.task_model['100XJson'] = I1000AnalyseLabelmeJsons(config, self.logger)
@@ -168,10 +167,11 @@ class DeepCell():
         self.logger.info(f"Model Test Successful")
 
     def _model_debug(self):
-        floder = 'F:/adam/i1000/adk/adk_src'
+        # floder = 'F:/adam/i1000/adk/adk_src'
+        floder = 'F:/adam/i1000/fs/W23081/W23081-2/x100/ImgBeforeEnhancement'
         for root, _, file_list in os.walk(floder):
             for file in file_list:
-                path = os.path.join(root, file) + '*2'
+                path = os.path.join(root, file) + '*3'
                 self.run(path)
 
     def _get_task(self,info):
@@ -193,8 +193,8 @@ class DeepCell():
                 else:
                     dst = '100XAnalyse'
 
-            # elif task == '3':
-            #     dst = '100XMask'
+            elif task == '3':
+                dst = '100XMask'
 
         elif len(info_list) == 1:
             dst = '10XDet'
